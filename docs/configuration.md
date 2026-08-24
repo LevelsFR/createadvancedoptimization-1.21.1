@@ -43,6 +43,11 @@ Create: Advanced Optimization uses a server config only.
 - `enabled = true`
   Enables one-tick memoization for Basin and Mechanical Crafter recipe windows.
 
+`[optimizations.belts]`
+
+- `tickFastPaths = true`
+  Reuses the block state already maintained by each belt block entity and skips temporary entity-passenger cleanup allocation when a moving controller has no passengers. This does not skip ticks or alter transported-item cadence.
+
 `[optimizations.beltFunnels]`
 
 - `fastRejectOversizedExactInsertions = true`
@@ -56,11 +61,12 @@ Create: Advanced Optimization uses a server config only.
 `[optimizations.experimentalPackages]`
 
 - `enabled = false`
-  Reserved for future `PackageEntity` behavior experiments. V1.2 keeps package handling diagnostic-only by default.
+  Reserved for future `PackageEntity` behavior experiments. V1.4 keeps package handling diagnostic-only by default.
 
 ## Notes
 
 - No option is exposed unless it has a real implementation in V1.
 - The spout cache is enabled by default because the current implementation only memoizes bounded official Create filling lookups and still leaves dynamic external capability-based filling uncached.
-- The experimental package section is intentionally off by default and does not throttle or remove packages in V1.2.
+- The belt tick fast paths are enabled by default because they remove redundant lookup/allocation work without delaying any belt tick.
+- The experimental package section is intentionally off by default and does not throttle or remove packages in V1.4.
 - No client config is generated.

@@ -43,12 +43,33 @@ public enum ProfiledSection {
         "Low-level Create extraction routine used by funnels and related logistics blocks.",
         "Usually means inventories are being queried heavily, often in item transport setups."
     ),
-    BELT_TICK(
-        "Belt Tick",
+    BELT_SEGMENT_TICK(
+        "Belt Segment Tick",
         "BeltBlockEntity.tick",
         "Belts",
-        "Controller belt tick handling transported item movement and belt-side interactions.",
-        "Often points to dense belt lines, many transported stacks, or item handoff loops around funnels, tunnels, and machines."
+        "Tick cost for non-controller belt segments, primarily Create kinetic-network and block-entity maintenance.",
+        "High call counts with a low average cost usually indicate many loaded belt segments rather than busy transported items."
+    ),
+    BELT_CONTROLLER_TICK(
+        "Belt Controller Tick",
+        "BeltBlockEntity.tick [controller]",
+        "Belts",
+        "Controller belt tick including transported stack movement, belt-side interactions, and entity passengers.",
+        "High average cost points to busy transported stacks, processing, funnels, tunnels, crushers, or entity passengers."
+    ),
+    BELT_INVENTORY_EMPTY_TICK(
+        "Empty Belt Inventory Tick",
+        "BeltInventory.tick [empty]",
+        "Belts",
+        "Controller inventory maintenance when no transported item stacks are present.",
+        "A high total with many calls indicates large numbers of loaded belt controllers even when item transport is idle."
+    ),
+    BELT_INVENTORY_ACTIVE_TICK(
+        "Active Belt Inventory Tick",
+        "BeltInventory.tick [active]",
+        "Belts",
+        "Movement and interaction work for a controller carrying one or more transported item stacks.",
+        "High values indicate item-dense belt lines or repeated funnel, tunnel, crusher, and processing checks."
     ),
     BELT_FUNNEL_CHECK(
         "Belt Funnel Check",

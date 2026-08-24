@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Profiles the core extract overload used by funnels and other Create inventory pullers.
- */
 @Mixin(InvManipulationBehaviour.class)
 public abstract class InvManipulationBehaviourMixin {
 

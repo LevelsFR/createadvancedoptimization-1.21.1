@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles train map sync server ticks for report visibility without changing sync behavior.
- */
 @Mixin(TrainMapSync.class)
 public abstract class TrainMapSyncMixin {
 

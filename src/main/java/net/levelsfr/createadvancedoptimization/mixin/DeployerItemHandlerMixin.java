@@ -13,9 +13,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
-/**
- * Avoids unnecessary stack allocation in deployer insertion attempts that cannot insert anything.
- */
 @Mixin(DeployerItemHandler.class)
 public abstract class DeployerItemHandlerMixin {
 

@@ -5,6 +5,7 @@
   "mixins": [
     "BasinOperatingBlockEntityMixin",
     "BeltBlockEntityMixin",
+    "BeltInventoryMixin",
     "BeltFunnelInteractionHandlerMixin",
     "DeployerItemHandlerMixin",
     "DivingBootsItemMixin",
@@ -22,7 +23,10 @@
     "SpoutBlockEntityMixin",
     "TrackGraphSyncMixin",
     "TrainMapSyncMixin",
-    "accessor.GroupedItemsAccessor"
+    "accessor.BeltBlockEntityAccessor",
+    "accessor.ChunkMapAccessor",
+    "accessor.GroupedItemsAccessor",
+    "accessor.KineticBlockEntityAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

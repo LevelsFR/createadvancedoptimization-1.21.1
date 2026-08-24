@@ -85,6 +85,20 @@ These buttons avoid spamming the full file path in chat. `Open HTML` and `Open T
 
 Scans loaded levels on demand and prints the most package-heavy chunks.
 
+## Belt diagnostics
+
+- `/createadvancedoptimization belts scan [limit]`
+- `/cao belts scan [limit]`
+
+Scans ticking loaded chunks on demand and prints:
+
+- loaded belt segment and controller counts
+- moving and item-carrying controller counts
+- transported stack and entity-passenger totals
+- top controllers ordered by transported stacks, passengers, then belt length
+
+The scan does not maintain a persistent belt registry and does not initialize empty belt inventories.
+
 ## Reset
 
 - `/createadvancedoptimization reset`

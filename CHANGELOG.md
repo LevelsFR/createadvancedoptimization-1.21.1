@@ -1,42 +1,46 @@
 # Changelog
 
-## 1.3.0
+## 1.4.0
 
-# Create: Advanced Optimization v1.3
+# Create: Advanced Optimization v1.4
 
-## Build and distribution
-- Replaced the machine-specific local Create development JAR path with the official Create Maven dependency `com.simibubi.create:create-1.21.1:6.0.10-223`.
-- Create `6.0.10` remains a required runtime dependency and is not bundled inside the Create: Advanced Optimization JAR.
-- Clean source and GitHub Actions builds no longer require a local CurseForge instance or a manually supplied Create JAR.
+## Mechanical belts
+- Added an enabled-by-default belt tick fast path that reuses the `BlockEntity`'s current cached `BlockState` instead of asking the level for the same state on every loaded belt segment every tick.
+- Added an enabled-by-default empty-passenger fast path that skips Create's temporary removal-list allocation and empty map traversal on moving belt controllers with no entity passengers.
+- Kept full tick cadence, transported-item speed, throughput, collision behavior, and belt-side interaction order unchanged.
+- Added `optimizations.belts.tickFastPaths` as a single rollback toggle for both conservative belt tick changes.
 
-## Licensing and project
-- Relicensed the current repository source code under the Mozilla Public License 2.0 (`MPL-2.0`).
-- Added the complete MPL-2.0 license text, project attribution notice, and license notices included in future built JARs.
-- Kept the Create: Advanced Optimization name, logo, icons, artwork, and project branding reserved to LevelsFR unless explicitly stated otherwise.
-- Updated the README and generated NeoForge metadata to identify version `1.3` and the MPL-2.0 license correctly.
+## Belt diagnostics
+- Split belt profiling into non-controller segment ticks and controller ticks.
+- Split `BeltInventory.tick` profiling into empty and active transported-item inventories.
+- Added `/cao belts scan [limit]` and `/createadvancedoptimization belts scan [limit]` for an on-demand scan of ticking loaded chunks.
+- The scan reports segments, controllers, moving controllers, item-carrying controllers, transported stacks, entity passengers, and the busiest controller positions.
+- The scan reads the controller inventory field directly and does not create empty inventories as a diagnostic side effect.
 
-## Runtime compatibility
-- Continues targeting Minecraft `1.21.1`, NeoForge `21.1.233`, Java `21`, and exactly Create `6.0.10`.
-- No optimization, configuration, command, diagnostic, or gameplay behavior was changed during the Maven, documentation, and licensing maintenance pass.
+## Compatibility and validation
+- Continued to target Minecraft `1.21.1`, NeoForge, Java `21`, and exact Create `6.0.10` compatibility.
+- Rechecked the public Create distributions on August 25, 2026; `6.0.10` remains the latest released NeoForge build for Minecraft `1.21.1` while `6.0.11` is not yet a public release.
+- Verified the local source-of-truth JAR reports Create `6.0.10` and Git hash `ac0c444d9828da3453ae8cc65338e8de063286fb`.
 
-## 1.3.0-fr
+## 1.4.0-fr
 
-# Create: Advanced Optimization v1.3
+# Create: Advanced Optimization v1.4
 
-## Build et distribution
-- Remplacement du chemin local vers le JAR de développement Create par la dépendance Maven officielle `com.simibubi.create:create-1.21.1:6.0.10-223`.
-- Create `6.0.10` reste une dépendance obligatoire à installer séparément et n'est pas intégré dans le JAR de Create: Advanced Optimization.
-- La compilation propre du projet et GitHub Actions ne dépendent plus d'une instance CurseForge locale ni d'un JAR Create fourni manuellement.
+## Mechanical Belts
+- Ajout d'un fast-path actif par défaut qui réutilise le `BlockState` courant déjà conservé par la `BlockEntity`, au lieu de relire le même état dans le niveau pour chaque segment à chaque tick.
+- Ajout d'un fast-path actif par défaut qui évite l'allocation d'une liste temporaire et le parcours d'une map vide sur les contrôleurs sans entité passagère.
+- La cadence, la vitesse des items, le débit, les collisions et l'ordre des interactions restent inchangés.
+- Ajout de `optimizations.belts.tickFastPaths` pour désactiver ensemble ces deux optimisations conservatrices.
 
-## Licence et projet
-- Le code source actuellement présent dans le dépôt passe sous Mozilla Public License 2.0 (`MPL-2.0`).
-- Ajout du texte complet de la MPL-2.0, de la notice d'attribution du projet et des notices de licence incluses dans les prochains JAR générés.
-- Le nom Create: Advanced Optimization, le logo, les icônes, les illustrations et l'identité visuelle du projet restent réservés à LevelsFR sauf indication contraire explicite.
-- Mise à jour du README et des métadonnées NeoForge générées pour indiquer correctement la version `1.3` et la licence MPL-2.0.
+## Diagnostics belts
+- Séparation du profiling entre segments non-contrôleurs et contrôleurs.
+- Séparation du profiling de `BeltInventory.tick` entre inventaires vides et actifs.
+- Ajout de `/cao belts scan [limit]` pour inspecter à la demande les chunks chargés qui tickent.
+- Le scan n'initialise pas artificiellement les inventaires vides.
 
-## Compatibilité runtime
-- Cible toujours Minecraft `1.21.1`, NeoForge `21.1.233`, Java `21` et exactement Create `6.0.10`.
-- Aucun comportement d'optimisation, de configuration, de commande, de diagnostic ou de gameplay n'a été modifié pendant cette passe de maintenance Maven, documentation et licence.
+## Compatibilité
+- Cible toujours Minecraft `1.21.1`, NeoForge, Java `21` et exactement Create `6.0.10`.
+- Vérification des distributions publiques le 25 août 2026 : `6.0.10` reste la dernière release Create pour NeoForge 1.21.1 ; `6.0.11` n'est pas encore une release publique.
 
 ## 1.2.0
 

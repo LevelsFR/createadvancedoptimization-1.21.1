@@ -22,9 +22,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Adds a bounded local recipe cache to each Spout and profiles the main server-side belt entry points.
- */
 @Mixin(SpoutBlockEntity.class)
 public abstract class SpoutBlockEntityMixin implements SpoutRecipeCacheHolder {
 

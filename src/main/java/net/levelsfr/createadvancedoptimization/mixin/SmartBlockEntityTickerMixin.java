@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles the main SmartBlockEntity ticker entry point to correlate Create-wide machine load with deeper hotspots.
- */
 @Mixin(SmartBlockEntityTicker.class)
 public abstract class SmartBlockEntityTickerMixin {
 

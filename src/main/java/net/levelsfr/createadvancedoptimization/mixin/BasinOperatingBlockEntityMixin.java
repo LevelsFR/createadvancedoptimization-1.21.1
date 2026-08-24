@@ -16,9 +16,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Memoizes identical basin recipe windows for the current server tick only.
- */
 @Mixin(BasinOperatingBlockEntity.class)
 public abstract class BasinOperatingBlockEntityMixin {
 

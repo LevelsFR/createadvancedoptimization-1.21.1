@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles server chain conveyor handler ticks for future diagnostics.
- */
 @Mixin(ServerChainConveyorHandler.class)
 public abstract class ServerChainConveyorHandlerMixin {
 

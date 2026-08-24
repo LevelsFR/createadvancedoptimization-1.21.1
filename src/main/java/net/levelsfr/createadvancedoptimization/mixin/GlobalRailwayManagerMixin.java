@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles GlobalRailwayManager tick cost for train-heavy servers.
- */
 @Mixin(GlobalRailwayManager.class)
 public abstract class GlobalRailwayManagerMixin {
 

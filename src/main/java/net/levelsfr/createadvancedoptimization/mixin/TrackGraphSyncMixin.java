@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles track graph sync server work for train-network diagnostics.
- */
 @Mixin(TrackGraphSync.class)
 public abstract class TrackGraphSyncMixin {
 

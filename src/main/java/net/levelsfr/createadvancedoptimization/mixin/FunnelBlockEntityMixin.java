@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles funnel ticks because extraction-heavy lines are a common Create server hotspot.
- */
 @Mixin(FunnelBlockEntity.class)
 public abstract class FunnelBlockEntityMixin {
 

@@ -24,9 +24,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
-/**
- * Targets the belt/funnel insertion path visible in Spark without changing successful transfer behavior.
- */
 @Mixin(BeltFunnelInteractionHandler.class)
 public abstract class BeltFunnelInteractionHandlerMixin {
 

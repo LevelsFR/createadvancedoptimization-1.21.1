@@ -12,9 +12,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Memoizes identical mechanical crafting lookup windows for the current server tick only.
- */
 @Mixin(RecipeGridHandler.class)
 public abstract class RecipeGridHandlerMixin {
 

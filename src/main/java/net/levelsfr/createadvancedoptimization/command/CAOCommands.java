@@ -7,6 +7,7 @@ import net.levelsfr.createadvancedoptimization.CreateAdvancedOptimization;
 import net.levelsfr.createadvancedoptimization.compatibility.CreateCompatibility;
 import net.levelsfr.createadvancedoptimization.config.CAOServerConfig;
 import net.levelsfr.createadvancedoptimization.diagnostics.OptimizationStats;
+import net.levelsfr.createadvancedoptimization.diagnostics.belts.BeltDiagnostics;
 import net.levelsfr.createadvancedoptimization.diagnostics.packages.PackageEntityMonitor;
 import net.levelsfr.createadvancedoptimization.diagnostics.profiler.CreateProfilerManager;
 import net.levelsfr.createadvancedoptimization.diagnostics.profiler.ReportWriter;
@@ -61,6 +62,11 @@ public final class CAOCommands {
                     .executes(context -> packagesStalled(context.getSource(), 10))
                     .then(Commands.argument("limit", IntegerArgumentType.integer(1, 50))
                         .executes(context -> packagesStalled(context.getSource(), IntegerArgumentType.getInteger(context, "limit"))))))
+            .then(Commands.literal("belts")
+                .then(Commands.literal("scan")
+                    .executes(context -> beltsScan(context.getSource(), 10))
+                    .then(Commands.argument("limit", IntegerArgumentType.integer(1, 50))
+                        .executes(context -> beltsScan(context.getSource(), IntegerArgumentType.getInteger(context, "limit"))))))
             .then(Commands.literal("reset")
                 .executes(context -> reset(context.getSource())));
     }
@@ -89,6 +95,7 @@ public final class CAOCommands {
         send(source, false, statusLine("Diving Boots", boolLabel(CAOServerConfig.DIVING_BOOTS_ENABLED.get())));
         send(source, false, statusLine("Spout Cache Enabled", boolLabel(CAOServerConfig.SPOUT_RECIPE_CACHE_ENABLED.get())));
         send(source, false, statusLine("Processing Memo Enabled", boolLabel(CAOServerConfig.PROCESSING_RECIPE_MEMOIZATION_ENABLED.get())));
+        send(source, false, statusLine("Belt Tick Fast Paths", boolLabel(CAOServerConfig.BELT_TICK_FAST_PATHS_ENABLED.get())));
         send(source, false, statusLine("Experimental Packages", boolLabel(CAOServerConfig.EXPERIMENTAL_PACKAGES_ENABLED.get())));
         return 1;
     }
@@ -209,6 +216,39 @@ public final class CAOCommands {
                     + formatDecimal(snapshot.z()) + "]").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal("  chunk[" + snapshot.chunkX() + ", " + snapshot.chunkZ() + "]").withStyle(ChatFormatting.DARK_GRAY))
                 .append(Component.literal("  age=" + formatDecimal(snapshot.ageSeconds()) + "s").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append(Component.literal("  speed=" + formatDecimal(snapshot.speed())).withStyle(ChatFormatting.DARK_GRAY))));
+        return 1;
+    }
+
+    private static int beltsScan(CommandSourceStack source, int limit) {
+        if (!CAOServerConfig.diagnosticsEnabledFast()) {
+            send(source, false, errorLine(Component.translatable("command.createadvancedoptimization.diagnostics.disabled")));
+            return 0;
+        }
+
+        BeltDiagnostics.Snapshot diagnostics = BeltDiagnostics.scan(source.getServer(), limit);
+        send(source, false, titleLine("Mechanical Belt Diagnostics", "Loaded"));
+        send(source, false, statusLine("Segments", Integer.toString(diagnostics.loadedSegments())));
+        send(source, false, statusLine("Controllers", diagnostics.controllers() + " total, " + diagnostics.movingControllers() + " moving"));
+        send(source, false, statusLine("Transport", diagnostics.itemCarryingControllers() + " item-carrying controllers, "
+            + diagnostics.transportedStacks() + " transported stacks"));
+        send(source, false, statusLine("Entity Passengers", Integer.toString(diagnostics.entityPassengers())));
+
+        if (diagnostics.topControllers().isEmpty()) {
+            send(source, false, Component.literal(" No ticking belt controllers were found in loaded chunks.").withStyle(ChatFormatting.GRAY));
+            return 1;
+        }
+
+        send(source, false, Component.literal(" Top controllers (transported stacks, passengers, then length):")
+            .withStyle(ChatFormatting.DARK_GRAY));
+        diagnostics.topControllers().forEach(snapshot -> send(source, false,
+            Component.literal(" ")
+                .append(Component.literal(snapshot.dimension()).withStyle(ChatFormatting.AQUA))
+                .append(Component.literal("  pos[" + snapshot.position().getX() + ", " + snapshot.position().getY() + ", "
+                    + snapshot.position().getZ() + "]").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("  length=" + snapshot.length()).withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal("  stacks=" + snapshot.transportedStacks()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append(Component.literal("  passengers=" + snapshot.entityPassengers()).withStyle(ChatFormatting.DARK_GRAY))
                 .append(Component.literal("  speed=" + formatDecimal(snapshot.speed())).withStyle(ChatFormatting.DARK_GRAY))));
         return 1;
     }

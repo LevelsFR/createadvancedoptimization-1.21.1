@@ -15,9 +15,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Profiles Diving Boots and skips redundant HeavyBoots marker writes/removals.
- */
 @Mixin(DivingBootsItem.class)
 public abstract class DivingBootsItemMixin {
 

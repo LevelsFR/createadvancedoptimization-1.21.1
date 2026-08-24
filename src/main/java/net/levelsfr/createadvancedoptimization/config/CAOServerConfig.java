@@ -18,11 +18,13 @@ public final class CAOServerConfig {
     public static final ModConfigSpec.BooleanValue SPOUT_RECIPE_CACHE_ENABLED;
     public static final ModConfigSpec.IntValue SPOUT_RECIPE_CACHE_MAX_ENTRIES;
     public static final ModConfigSpec.BooleanValue PROCESSING_RECIPE_MEMOIZATION_ENABLED;
+    public static final ModConfigSpec.BooleanValue BELT_TICK_FAST_PATHS_ENABLED;
     public static final ModConfigSpec.BooleanValue BELT_FUNNEL_FAST_REJECT_ENABLED;
     public static final ModConfigSpec.BooleanValue DEPLOYER_INSERT_FAST_REJECT_ENABLED;
     public static final ModConfigSpec.BooleanValue EXPERIMENTAL_PACKAGES_ENABLED;
 
     private static volatile boolean diagnosticsEnabled = true;
+    private static volatile boolean beltTickFastPathsEnabled = true;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -64,6 +66,13 @@ public final class CAOServerConfig {
             .define("enabled", true);
         builder.pop();
 
+        builder.push("belts");
+        BELT_TICK_FAST_PATHS_ENABLED = builder.comment(
+                "Reuses the belt block entity state already maintained by Minecraft and skips empty entity-passenger cleanup allocations. "
+                    + "Does not throttle belts or change item movement cadence.")
+            .define("tickFastPaths", true);
+        builder.pop();
+
         builder.push("beltFunnels");
         BELT_FUNNEL_FAST_REJECT_ENABLED = builder.comment("Skips redundant stack copies when a blocking belt funnel already knows the carried stack is too small for its exact extraction amount.")
             .define("fastRejectOversizedExactInsertions", true);
@@ -90,12 +99,18 @@ public final class CAOServerConfig {
     public static void refreshCachedState() {
         try {
             diagnosticsEnabled = GENERAL_ENABLED.get() && DIAGNOSTICS_ENABLED.get();
+            beltTickFastPathsEnabled = GENERAL_ENABLED.get() && BELT_TICK_FAST_PATHS_ENABLED.get();
         } catch (IllegalStateException ignored) {
             diagnosticsEnabled = true;
+            beltTickFastPathsEnabled = true;
         }
     }
 
     public static boolean diagnosticsEnabledFast() {
         return diagnosticsEnabled;
+    }
+
+    public static boolean beltTickFastPathsEnabled() {
+        return beltTickFastPathsEnabled;
     }
 }

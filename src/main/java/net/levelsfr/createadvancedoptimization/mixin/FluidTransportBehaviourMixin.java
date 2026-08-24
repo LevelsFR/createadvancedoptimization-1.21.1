@@ -9,9 +9,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Profiles server-side fluid transport ticks so pipe network hotspots show up in CAO reports.
- */
 @Mixin(FluidTransportBehaviour.class)
 public abstract class FluidTransportBehaviourMixin {
 
