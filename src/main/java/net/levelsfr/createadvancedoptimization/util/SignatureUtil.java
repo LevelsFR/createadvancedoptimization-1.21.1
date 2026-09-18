@@ -2,7 +2,9 @@ package net.levelsfr.createadvancedoptimization.util;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import net.levelsfr.createadvancedoptimization.CreateAdvancedOptimization;
 import net.levelsfr.createadvancedoptimization.diagnostics.OptimizationStats;
+import net.levelsfr.createadvancedoptimization.config.CAOServerConfig;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.ItemStack;
@@ -24,10 +26,13 @@ public final class SignatureUtil {
     }
 
     public static void invalidateRecipeCaches() {
-        RECIPE_RELOAD_EPOCH.incrementAndGet();
+        int epoch = RECIPE_RELOAD_EPOCH.incrementAndGet();
         OptimizationStats.recordSpoutInvalidation();
         OptimizationStats.recordBasinInvalidation();
         OptimizationStats.recordCrafterInvalidation();
+        if (CAOServerConfig.DEBUG_LOGGING.get()) {
+            CreateAdvancedOptimization.LOGGER.info("Invalidated Create recipe caches at epoch {}.", epoch);
+        }
     }
 
     public static String itemSignature(ItemStack stack) {

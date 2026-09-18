@@ -3,6 +3,8 @@ package net.levelsfr.createadvancedoptimization.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import net.levelsfr.createadvancedoptimization.CreateAdvancedOptimization;
 import net.levelsfr.createadvancedoptimization.compatibility.CreateCompatibility;
 import net.levelsfr.createadvancedoptimization.config.CAOServerConfig;
@@ -45,6 +47,7 @@ public final class CAOCommands {
                     .executes(context -> reset(context.getSource()))))
             .then(Commands.literal("profile")
                 .then(Commands.literal("start")
+                    .executes(context -> startProfile(context.getSource(), CAOServerConfig.PROFILE_DEFAULT_DURATION_SECONDS.get()))
                     .then(Commands.argument("seconds", IntegerArgumentType.integer(5, 3600))
                         .executes(context -> startProfile(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
                 .then(Commands.literal("stop")
@@ -52,7 +55,11 @@ public final class CAOCommands {
             .then(Commands.literal("report")
                 .executes(context -> writeReport(context.getSource()))
                 .then(Commands.literal("last")
-                    .executes(context -> showLastReport(context.getSource()))))
+                    .executes(context -> showLastReport(context.getSource())))
+                .then(Commands.literal("compare")
+                    .executes(context -> compareReports(context.getSource()))))
+            .then(Commands.literal("diagnose")
+                .executes(context -> diagnose(context.getSource())))
             .then(Commands.literal("packages")
                 .then(Commands.literal("top")
                     .executes(context -> packagesTop(context.getSource(), 10))
@@ -87,8 +94,7 @@ public final class CAOCommands {
             + ", avg age " + formatDecimal(packageDiagnostics.averageAgeSeconds()) + "s, stalled " + packageDiagnostics.stationaryCandidates()));
         send(source, false, statusLine("Optimization Events", stats.totalFastRejects()
             + " total, avoided copies~" + stats.estimatedAvoidedStackCopies()
-            + ", avoided splits~" + stats.estimatedAvoidedStackSplits()
-            + ", Diving Boots fast paths " + stats.divingBootsNoBootFastPaths()));
+            + ", avoided splits~" + stats.estimatedAvoidedStackSplits()));
         send(source, false, statusLine("Spout Cache", cacheLine(stats.spoutCache())));
         send(source, false, statusLine("Basin Memo", cacheLine(stats.basinCache())));
         send(source, false, statusLine("Crafter Memo", cacheLine(stats.crafterCache())));
@@ -112,6 +118,50 @@ public final class CAOCommands {
         send(source, false, statusLine("Crafter Memo", detailedCacheLine(stats.crafterCache())));
         send(source, false, Component.literal(" Timing fields are populated only by diagnostic sampling builds; zero means no sampled timing was recorded.")
             .withStyle(ChatFormatting.DARK_GRAY));
+        return 1;
+    }
+
+    private static int diagnose(CommandSourceStack source) {
+        if (!CAOServerConfig.diagnosticsEnabledFast()) {
+            send(source, false, errorLine(Component.translatable("command.createadvancedoptimization.diagnostics.disabled")));
+            return 0;
+        }
+
+        PackageEntityMonitor monitor = PackageEntityMonitor.getInstance();
+        PackageEntityMonitor.PackageDiagnostics packageDiagnostics = monitor.collectDiagnostics(source.getServer(), 3);
+        BeltDiagnostics.Snapshot beltDiagnostics = BeltDiagnostics.scan(source.getServer(), 3);
+        CreateProfilerManager.ProfileSession session = CreateProfilerManager.getActiveSession();
+        if (session == null) {
+            session = CreateProfilerManager.getLastCompletedSession();
+        }
+
+        send(source, false, titleLine("Create: Advanced Optimization", "Diagnosis"));
+        send(source, false, Component.literal(" Signals only: correlate this summary with the factory and a Spark sample.")
+            .withStyle(ChatFormatting.DARK_GRAY));
+
+        if (session == null || session.sortedEntries().isEmpty()) {
+            send(source, false, statusLine("Profiler", "no hotspot sample available; run /cao profile start"));
+        } else {
+            var top = session.sortedEntries().get(0);
+            double msPerTick = session.tickSamples() == 0 ? 0.0D : top.getValue().totalMillis() / session.tickSamples();
+            send(source, false, statusLine("Top sampled hotspot", top.getKey().label() + " " + formatDecimal(msPerTick) + " ms/tick"));
+            if (session.maxMspt() >= CAOServerConfig.LAG_SPIKE_THRESHOLD_MS.get()) {
+                send(source, false, statusLine("Profiler signal", "MSPT threshold exceeded; compare with Spark during the same event"));
+            }
+        }
+
+        send(source, false, statusLine("Packages", packageDiagnostics.active() + " active, "
+            + packageDiagnostics.stationaryCandidates() + " stationary candidates"));
+        send(source, false, statusLine("Belts", beltDiagnostics.controllers() + " controllers, "
+            + beltDiagnostics.transportedStacks() + " transported stacks"));
+
+        if (packageDiagnostics.stationaryCandidates() > 0 || packageDiagnostics.active() >= CAOServerConfig.PACKAGE_ENTITY_WARNING_THRESHOLD.get()) {
+            send(source, false, Component.literal(" Next: inspect /cao packages top and /cao packages stalled.").withStyle(ChatFormatting.GOLD));
+        } else if (beltDiagnostics.transportedStacks() > 0 || beltDiagnostics.entityPassengers() > 0) {
+            send(source, false, Component.literal(" Next: inspect /cao belts scan and the top controller positions.").withStyle(ChatFormatting.GOLD));
+        } else {
+            send(source, false, Component.literal(" Next: run a profile while the suspected factory is busy.").withStyle(ChatFormatting.GOLD));
+        }
         return 1;
     }
 
@@ -169,11 +219,40 @@ public final class CAOCommands {
                 send(source, false, errorLine("No exported report was found yet."));
                 return 0;
             }
-            send(source, false, reportExportComponent("Create Report", "Last Export", report));
+            send(source, false, reportExportComponent("Create Report", "Last Export", report, !source.getServer().isDedicatedServer()));
             return 1;
         } catch (Exception exception) {
             CreateAdvancedOptimization.LOGGER.error("Failed to locate the latest report export.", exception);
             send(source, false, errorLine("Failed to locate the latest report export: " + exception.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int compareReports(CommandSourceStack source) {
+        try {
+            ReportWriter.ReportComparison comparison = ReportWriter.compareLatestReports();
+            if (comparison == null) {
+                send(source, false, errorLine("At least two JSON reports are required for a comparison."));
+                return 0;
+            }
+
+            send(source, false, titleLine("Create Report", "Comparison"));
+            send(source, false, statusLine("Average MSPT", formatDecimal(comparison.newerAverageMspt())
+                + " (" + signedDecimal(comparison.newerAverageMspt() - comparison.olderAverageMspt()) + ")"));
+            send(source, false, statusLine("Maximum MSPT", formatDecimal(comparison.newerMaxMspt())
+                + " (" + signedDecimal(comparison.newerMaxMspt() - comparison.olderMaxMspt()) + ")"));
+            send(source, false, statusLine("Lag spikes", comparison.newerTicksAboveThreshold()
+                + " (" + signedLong(comparison.newerTicksAboveThreshold() - comparison.olderTicksAboveThreshold()) + ")"));
+            send(source, false, statusLine("Profiled Create", formatDecimal(comparison.newerProfiledCreateMs())
+                + " ms (" + signedDecimal(comparison.newerProfiledCreateMs() - comparison.olderProfiledCreateMs()) + ")"));
+            send(source, false, statusLine("Top hotspot", comparison.newerTopHotspot() + " "
+                + formatDecimal(comparison.newerTopHotspotMsPerTick()) + " ms/tick"));
+            send(source, false, statusLine("Reports", comparison.olderReport().getFileName() + " -> " + comparison.newerReport().getFileName()));
+            send(source, false, comparisonReportActions(comparison, !source.getServer().isDedicatedServer()));
+            return 1;
+        } catch (Exception exception) {
+            CreateAdvancedOptimization.LOGGER.error("Failed to compare the latest report exports.", exception);
+            send(source, false, errorLine("Failed to compare report exports: " + exception.getMessage()));
             return 0;
         }
     }
@@ -268,10 +347,10 @@ public final class CAOCommands {
     public static void exportCompletedSession(MinecraftServer server, CreateProfilerManager.ProfileSession session) {
         try {
             ExportedReport report = ReportWriter.writeReport(session, PackageEntityMonitor.getInstance(), server);
-            Component component = reportExportComponent("Create Profiler", "Finished", report);
+            Component component = reportExportComponent("Create Profiler", "Finished", report, !server.isDedicatedServer());
             notifyInitiator(server, session.initiatedBy(), component);
-            CreateAdvancedOptimization.LOGGER.info("Create profiler finished. TXT={} HTML={} Session={}",
-                report.textReport(), report.htmlReport(), session.sessionId());
+            CreateAdvancedOptimization.LOGGER.info("Create profiler finished. TXT={} HTML={} JSON={} Folder={} Session={}",
+                report.textReport(), report.htmlReport(), report.jsonReport(), report.htmlReport().getParent(), session.sessionId());
         } catch (Exception exception) {
             CreateAdvancedOptimization.LOGGER.error("Failed to export completed Create profiler session {}.", session.sessionId(), exception);
             notifyInitiator(server, session.initiatedBy(), errorLine("Create profiler finished, but the report export failed: " + exception.getMessage()));
@@ -291,32 +370,69 @@ public final class CAOCommands {
     }
 
     private static void sendReportExport(CommandSourceStack source, boolean broadcastToOps, String title, String badge, ExportedReport report) {
-        send(source, broadcastToOps, reportExportComponent(title, badge, report));
+        send(source, broadcastToOps, reportExportComponent(title, badge, report, !source.getServer().isDedicatedServer()));
     }
 
-    private static MutableComponent reportExportComponent(String title, String badge, ExportedReport report) {
-        String textFileName = report.textReport().getFileName().toString();
-        String htmlFileName = report.htmlReport().getFileName().toString();
-        String reportFolder = report.htmlReport().toAbsolutePath().getParent().toString();
+    private static MutableComponent reportExportComponent(String title, String badge, ExportedReport report, boolean localFileActions) {
+        boolean hasJsonReport = Files.isRegularFile(report.jsonReport());
+        String reportFolder = report.htmlReport().getParent().toAbsolutePath().toString();
 
         MutableComponent component = titleLine(title, badge)
             .append(Component.literal("\n"))
-            .append(Component.literal(" Report exported successfully.").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("  Report ready — files grouped in a dedicated folder.").withStyle(ChatFormatting.GRAY));
+        if (!localFileActions) {
+            return component
+                .append(Component.literal("\n"))
+                .append(Component.literal("  Report files are available on the server host.").withStyle(ChatFormatting.DARK_GRAY));
+        }
+
+        component
             .append(Component.literal("\n"))
-            .append(Component.literal(" ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(actionButton("Copy HTML Path", ChatFormatting.AQUA, new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, report.htmlReport().toAbsolutePath().toString()),
-                "Copy the HTML report path to the clipboard."))
+            .append(Component.literal("  ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(actionButton("Open HTML", ChatFormatting.AQUA, new ClickEvent(ClickEvent.Action.OPEN_FILE, report.htmlReport().toAbsolutePath().toString()),
+                "Open the HTML report."))
             .append(Component.literal("  "))
-            .append(actionButton("Copy TXT Path", ChatFormatting.GOLD, new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, report.textReport().toAbsolutePath().toString()),
-                "Copy the TXT report path to the clipboard."))
-            .append(Component.literal("  "))
-            .append(actionButton("Copy Folder Path", ChatFormatting.LIGHT_PURPLE, new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, reportFolder),
-                "Copy the report folder path to the clipboard."))
+            .append(actionButton("Open TXT", ChatFormatting.GOLD, new ClickEvent(ClickEvent.Action.OPEN_FILE, report.textReport().toAbsolutePath().toString()),
+                "Open the TXT debrief."))
             .append(Component.literal("\n"))
-            .append(Component.literal(" ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(Component.literal("Files: ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(Component.literal(htmlFileName + " | " + textFileName).withStyle(ChatFormatting.WHITE));
+            .append(Component.literal("  ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(hasJsonReport
+                ? actionButton("Open JSON", ChatFormatting.GREEN, new ClickEvent(ClickEvent.Action.OPEN_FILE, report.jsonReport().toAbsolutePath().toString()),
+                    "Open the JSON report.")
+                : Component.literal("[JSON unavailable]").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal("  "))
+            .append(actionButton("Open Report Folder", ChatFormatting.LIGHT_PURPLE, new ClickEvent(ClickEvent.Action.OPEN_FILE, reportFolder),
+                "Open the folder containing this report."))
+            .append(Component.literal("\n"))
+            .append(Component.literal("  Local file buttons work when the client can access this server folder.").withStyle(ChatFormatting.DARK_GRAY));
         return component;
+    }
+
+    private static MutableComponent comparisonReportActions(ReportWriter.ReportComparison comparison, boolean localFileActions) {
+        Path olderHtml = siblingWithExtension(comparison.olderReport(), ".html");
+        Path newerHtml = siblingWithExtension(comparison.newerReport(), ".html");
+        MutableComponent component = Component.literal("  HTML reports: ").withStyle(ChatFormatting.DARK_AQUA);
+        if (!localFileActions) {
+            return component.append(Component.literal("available on the server host").withStyle(ChatFormatting.DARK_GRAY));
+        }
+
+        return component
+            .append(Files.isRegularFile(olderHtml)
+                ? actionButton("Open Older HTML", ChatFormatting.GOLD, new ClickEvent(ClickEvent.Action.OPEN_FILE, olderHtml.toAbsolutePath().toString()),
+                    "Open the older HTML report.")
+                : Component.literal("[Older HTML unavailable]").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal("  "))
+            .append(Files.isRegularFile(newerHtml)
+                ? actionButton("Open Newer HTML", ChatFormatting.GREEN, new ClickEvent(ClickEvent.Action.OPEN_FILE, newerHtml.toAbsolutePath().toString()),
+                    "Open the newer HTML report.")
+                : Component.literal("[Newer HTML unavailable]").withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+    private static Path siblingWithExtension(Path path, String extension) {
+        String fileName = path.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String stem = dot < 0 ? fileName : fileName.substring(0, dot);
+        return path.resolveSibling(stem + extension);
     }
 
     private static MutableComponent titleLine(String title, String badge) {
@@ -346,13 +462,19 @@ public final class CAOCommands {
             + ", invalidations " + cache.invalidations()
             + ", negative " + cache.negativeResults()
             + ", max size " + cache.maxSizeReached()
-            + ", key ns " + cache.keyBuildNanos()
-            + ", original ns " + cache.originalLookupNanos()
-            + ", avoided ns~" + cache.estimatedAvoidedNanos();
+            + ", key ns " + cache.keyBuildNanos();
     }
 
     private static String formatDecimal(double value) {
         return String.format(java.util.Locale.ROOT, "%.3f", value);
+    }
+
+    private static String signedDecimal(double value) {
+        return (value >= 0.0D ? "+" : "") + formatDecimal(value);
+    }
+
+    private static String signedLong(long value) {
+        return (value >= 0L ? "+" : "") + value;
     }
 
     private static MutableComponent errorLine(String message) {

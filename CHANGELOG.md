@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.0
+
+### New
+- Added `/cao diagnose` to combine the latest profiler, PackageEntity, and belt signals into one administrator summary.
+- Added machine-readable JSON exports alongside TXT and HTML reports.
+- Added `/cao report compare` to compare the two most recent JSON reports.
+- `profile start` now accepts an omitted duration and uses `diagnostics.profileDefaultDurationSeconds`.
+- Added direct local-file buttons for HTML, TXT, JSON, and the report folder.
+- Added direct older/newer HTML buttons to `/cao report compare`.
+
+### Changes
+- Report exports now expose measured hotspot and package data in a stable JSON structure.
+- Each report export is grouped into its own dedicated subfolder.
+- Removed obsolete Diving Boots no-boots and unrecorded cache timing fields from status and reports.
+- Enabled the existing `debugLogging` option for recipe-cache invalidation messages.
+
+### Fixes
+- Aligned configuration and command documentation with the current Diving Boots and report-export behavior.
+- PackageEntity peak and spawned values in reports are now scoped to the profiling session instead of requiring a manual reset first.
+
 ## 1.4.0
 
 # Create: Advanced Optimization v1.4

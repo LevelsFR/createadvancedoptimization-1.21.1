@@ -26,12 +26,14 @@ It does not optimize:
 - Iris
 - other purely graphical client features
 
-## V1.4 features
+## V1.5 features
 
 - strict Create `6.0.10` compatibility guard
 - server config with per-feature toggles
 - lightweight profiler with `/createadvancedoptimization` and `/cao` commands
-- Create diagnostics reports written to `logs/createadvancedoptimization/reports/` as unique `.txt` debriefs plus richer local `.html` reports
+- unified `/cao diagnose` summary combining profiler, PackageEntity, and belt signals
+- Create diagnostics reports written to `logs/createadvancedoptimization/reports/` as dedicated per-export folders containing `.txt`, `.html`, and machine-readable `.json` reports
+- `/cao report compare` for comparing the two latest JSON reports
 - `PackageEntity` monitoring with per-dimension tracking and chunk hotspots on demand
 - conservative Diving Boots marker-write cleanup without persistent entity-side memoization
 - bounded local spout lookup cache for official Create filling recipe checks, enabled by default

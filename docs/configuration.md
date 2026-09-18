@@ -29,7 +29,7 @@ Create: Advanced Optimization uses a server config only.
 `[optimizations.divingBoots]`
 
 - `enabled = true`
-  Prevents repeated `HeavyBoots` NBT work for entities that are not wearing Diving Boots.
+  Skips redundant `HeavyBoots` marker writes and removals when the marker is already in the desired state.
 
 `[optimizations.spoutRecipeCache]`
 
@@ -65,8 +65,8 @@ Create: Advanced Optimization uses a server config only.
 
 ## Notes
 
-- No option is exposed unless it has a real implementation in V1.
+- Options below are either active in the current release or explicitly marked as reserved.
 - The spout cache is enabled by default because the current implementation only memoizes bounded official Create filling lookups and still leaves dynamic external capability-based filling uncached.
 - The belt tick fast paths are enabled by default because they remove redundant lookup/allocation work without delaying any belt tick.
-- The experimental package section is intentionally off by default and does not throttle or remove packages in V1.4.
+- The experimental package section is intentionally off by default and currently only exposes its reserved status flag; package handling remains diagnostic-only.
 - No client config is generated.

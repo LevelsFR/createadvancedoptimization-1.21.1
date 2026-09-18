@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.levelsfr.createadvancedoptimization.config.CAOServerConfig;
 import net.levelsfr.createadvancedoptimization.diagnostics.OptimizationStats;
+import net.levelsfr.createadvancedoptimization.diagnostics.packages.PackageEntityMonitor;
 import net.minecraft.server.MinecraftServer;
 
 public final class CreateProfilerManager {
@@ -99,6 +100,7 @@ public final class CreateProfilerManager {
         double mspt = (System.nanoTime() - session.tickStartNanos) / 1_000_000.0D;
         session.tickStartNanos = 0L;
         session.recordTick(mspt, CAOServerConfig.LAG_SPIKE_THRESHOLD_MS.get());
+        session.recordPackageMetrics(PackageEntityMonitor.getInstance());
     }
 
     public static ProfileSession getActiveSession() {
@@ -127,6 +129,7 @@ public final class CreateProfilerManager {
         private final int endTick;
         private final Map<ProfiledSection, MethodStats> methodStats;
         private final OptimizationStats.Snapshot optimizationStatsAtStart;
+        private final long spawnedPackagesAtStart;
         private OptimizationStats.Snapshot optimizationStatsAtEnd;
         private boolean finished;
         private int exportCount;
@@ -135,6 +138,7 @@ public final class CreateProfilerManager {
         private long tickSamples;
         private long ticksAboveThreshold;
         private long tickStartNanos;
+        private int peakPackages;
 
         private ProfileSession(MinecraftServer server, int requestedDurationSeconds, String initiatedBy) {
             this.startedAt = Instant.now();
@@ -145,6 +149,9 @@ public final class CreateProfilerManager {
             this.endTick = this.startTick + requestedDurationSeconds * 20;
             this.methodStats = new EnumMap<>(ProfiledSection.class);
             this.optimizationStatsAtStart = OptimizationStats.snapshot();
+            PackageEntityMonitor packageMonitor = PackageEntityMonitor.getInstance();
+            this.spawnedPackagesAtStart = packageMonitor.getSpawnedSinceReset();
+            this.peakPackages = packageMonitor.getActiveTotal();
         }
 
         private synchronized void record(ProfiledSection section, long nanos) {
@@ -158,6 +165,10 @@ public final class CreateProfilerManager {
             if (mspt >= thresholdMs) {
                 ticksAboveThreshold++;
             }
+        }
+
+        private synchronized void recordPackageMetrics(PackageEntityMonitor monitor) {
+            peakPackages = Math.max(peakPackages, monitor.getActiveTotal());
         }
 
         private void finish() {
@@ -223,6 +234,14 @@ public final class CreateProfilerManager {
         public OptimizationStats.Snapshot optimizationStatsDelta() {
             OptimizationStats.Snapshot end = optimizationStatsAtEnd == null ? OptimizationStats.snapshot() : optimizationStatsAtEnd;
             return OptimizationStats.delta(optimizationStatsAtStart, end);
+        }
+
+        public synchronized int peakPackages() {
+            return peakPackages;
+        }
+
+        public long spawnedPackages(PackageEntityMonitor monitor) {
+            return Math.max(0L, monitor.getSpawnedSinceReset() - spawnedPackagesAtStart);
         }
     }
 

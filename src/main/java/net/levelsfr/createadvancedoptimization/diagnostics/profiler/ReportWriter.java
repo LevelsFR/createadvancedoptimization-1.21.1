@@ -1,5 +1,9 @@
 package net.levelsfr.createadvancedoptimization.diagnostics.profiler;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -29,6 +33,7 @@ public final class ReportWriter {
 
     private static final DateTimeFormatter FILE_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter DISPLAY_TIMESTAMP = DateTimeFormatter.ISO_OFFSET_DATE_TIME.withZone(ZoneOffset.UTC);
+    private static final Gson JSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String LOGO_RESOURCE_NAME = "createadvancedoptimization-logo.png";
     private static final int TOP_CHUNK_LIMIT = 10;
     private static final int TEXT_TOP_METHOD_LIMIT = 5;
@@ -48,15 +53,19 @@ public final class ReportWriter {
             + "-export"
             + String.format(Locale.ROOT, "%02d", exportSequence);
 
-        Path textReport = reportsDir.resolve(baseName + ".txt");
-        Path htmlReport = reportsDir.resolve(baseName + ".html");
+        Path exportDir = reportsDir.resolve(baseName);
+        Files.createDirectories(exportDir);
+        Path textReport = exportDir.resolve(baseName + ".txt");
+        Path htmlReport = exportDir.resolve(baseName + ".html");
+        Path jsonReport = exportDir.resolve(baseName + ".json");
 
-        ReportData reportData = buildReportData(session, monitor, server, textReport.getFileName().toString(), reportsDir.toAbsolutePath().toString());
+        ReportData reportData = buildReportData(session, monitor, server, textReport.getFileName().toString(), exportDir.toAbsolutePath().toString());
 
         Files.writeString(textReport, buildTextReport(reportData));
         Files.writeString(htmlReport, buildHtmlReport(reportData));
+        Files.writeString(jsonReport, buildJsonReport(reportData));
 
-        return new ExportedReport(textReport, htmlReport);
+        return new ExportedReport(textReport, htmlReport, jsonReport);
     }
 
     public static ExportedReport findLatestReport() throws IOException {
@@ -65,7 +74,7 @@ public final class ReportWriter {
             return null;
         }
 
-        try (Stream<Path> stream = Files.list(reportsDir)) {
+        try (Stream<Path> stream = Files.walk(reportsDir, 2)) {
             Path latestHtml = stream
                 .filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".html"))
                 .sorted(Comparator.comparing((Path path) -> path.getFileName().toString()).reversed())
@@ -77,13 +86,49 @@ public final class ReportWriter {
 
             String htmlName = latestHtml.getFileName().toString();
             String textName = htmlName.substring(0, htmlName.length() - ".html".length()) + ".txt";
-            Path textReport = reportsDir.resolve(textName);
+            Path textReport = latestHtml.resolveSibling(textName);
             if (!Files.exists(textReport)) {
                 return null;
             }
 
-            return new ExportedReport(textReport, latestHtml);
+            return new ExportedReport(textReport, latestHtml, latestHtml.resolveSibling(htmlName.substring(0, htmlName.length() - ".html".length()) + ".json"));
         }
+    }
+
+    public static ReportComparison compareLatestReports() throws IOException {
+        Path reportsDir = getReportsDir();
+        if (!Files.isDirectory(reportsDir)) {
+            return null;
+        }
+
+        List<Path> reports;
+        try (Stream<Path> stream = Files.walk(reportsDir, 2)) {
+            reports = stream
+                .filter(path -> Files.isRegularFile(path) && path.getFileName().toString().endsWith(".json"))
+                .sorted(Comparator.comparing((Path path) -> path.getFileName().toString()).reversed())
+                .limit(2)
+                .toList();
+        }
+        if (reports.size() < 2) {
+            return null;
+        }
+
+        JsonObject newer = JSON.fromJson(Files.readString(reports.get(0)), JsonObject.class);
+        JsonObject older = JSON.fromJson(Files.readString(reports.get(1)), JsonObject.class);
+        return new ReportComparison(
+            reports.get(0),
+            reports.get(1),
+            number(newer, "averageMspt"),
+            number(older, "averageMspt"),
+            number(newer, "maxMspt"),
+            number(older, "maxMspt"),
+            integer(newer, "ticksAboveThreshold"),
+            integer(older, "ticksAboveThreshold"),
+            number(newer, "profiledCreateTimeMs"),
+            number(older, "profiledCreateTimeMs"),
+            topHotspot(newer),
+            topHotspotMsPerTick(newer)
+        );
     }
 
     private static Path getReportsDir() {
@@ -149,8 +194,8 @@ public final class ReportWriter {
             topChunks,
             alerts,
             monitor.getActiveTotal(),
-            monitor.getPeakActiveTotal(),
-            monitor.getSpawnedSinceReset(),
+            session.peakPackages(),
+            session.spawnedPackages(monitor),
             packageDiagnostics,
             optimizationStats,
             totalProfiledMs,
@@ -255,7 +300,6 @@ public final class ReportWriter {
         builder.append("- Total Optimization Events: ").append(reportData.optimizationStats().totalFastRejects()).append(System.lineSeparator());
         builder.append("- Belt Funnel Fast Rejects: ").append(reportData.optimizationStats().beltFunnelFastRejects()).append(System.lineSeparator());
         builder.append("- Deployer Full Hand Fast Rejects: ").append(reportData.optimizationStats().deployerFullHandFastRejects()).append(System.lineSeparator());
-        builder.append("- Diving Boots No-Boot Fast Paths: ").append(reportData.optimizationStats().divingBootsNoBootFastPaths()).append(System.lineSeparator());
         builder.append("- Diving Boots Marker Writes Skipped: ").append(reportData.optimizationStats().divingBootsMarkerWritesSkipped()).append(System.lineSeparator());
         builder.append("- Diving Boots Marker Removals Skipped: ").append(reportData.optimizationStats().divingBootsMarkerRemovalsSkipped()).append(System.lineSeparator());
         builder.append("- Estimated Avoided ItemStack Copies: ").append(reportData.optimizationStats().estimatedAvoidedStackCopies()).append(System.lineSeparator());
@@ -300,7 +344,7 @@ public final class ReportWriter {
         builder.append("PackageEntity Summary").append(System.lineSeparator());
         builder.append("- Active Packages: ").append(reportData.activePackages()).append(System.lineSeparator());
         builder.append("- Peak Active Packages: ").append(reportData.peakPackages()).append(System.lineSeparator());
-        builder.append("- Spawned Packages Since Reset: ").append(reportData.spawnedPackages()).append(System.lineSeparator());
+        builder.append("- Spawned Packages During Profile: ").append(reportData.spawnedPackages()).append(System.lineSeparator());
         builder.append("- Average Package Age: ").append(formatDecimal(reportData.packageDiagnostics().averageAgeSeconds())).append(" s").append(System.lineSeparator());
         builder.append("- Max Package Age: ").append(formatDecimal(reportData.packageDiagnostics().maxAgeSeconds())).append(" s").append(System.lineSeparator());
         builder.append("- Stationary Package Candidates: ").append(reportData.packageDiagnostics().stationaryCandidates()).append(System.lineSeparator());
@@ -371,6 +415,118 @@ public final class ReportWriter {
         }
 
         return builder.toString();
+    }
+
+    private static String buildJsonReport(ReportData reportData) {
+        CreateProfilerManager.ProfileSession session = reportData.session();
+        JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", 1);
+        root.addProperty("generatedAt", DISPLAY_TIMESTAMP.format(java.time.Instant.now()));
+        root.addProperty("startedAt", DISPLAY_TIMESTAMP.format(session.startedAt()));
+        root.addProperty("sessionId", session.sessionId());
+        root.addProperty("requestedDurationSeconds", session.requestedDurationSeconds());
+        root.addProperty("modVersion", CreateAdvancedOptimization.getModVersion());
+        root.addProperty("createVersion", CreateCompatibility.getLoadedCreateVersion());
+        root.addProperty("tickSamples", session.tickSamples());
+        root.addProperty("averageMspt", session.averageMspt());
+        root.addProperty("maxMspt", session.maxMspt());
+        root.addProperty("ticksAboveThreshold", session.ticksAboveThreshold());
+        root.addProperty("lagSpikeThresholdMs", CAOServerConfig.LAG_SPIKE_THRESHOLD_MS.get());
+        root.addProperty("profiledCreateTimeMs", reportData.totalProfiledMs());
+        root.addProperty("activePackages", reportData.activePackages());
+        root.addProperty("peakPackages", reportData.peakPackages());
+        root.addProperty("spawnedPackages", reportData.spawnedPackages());
+
+        JsonArray hotspots = new JsonArray();
+        for (Map.Entry<ProfiledSection, CreateProfilerManager.MethodStats> entry : reportData.methodEntries()) {
+            ProfiledSection section = entry.getKey();
+            CreateProfilerManager.MethodStats stats = entry.getValue();
+            JsonObject hotspot = new JsonObject();
+            hotspot.addProperty("label", section.label());
+            hotspot.addProperty("method", section.displayName());
+            hotspot.addProperty("family", section.family());
+            hotspot.addProperty("totalMs", stats.totalMillis());
+            hotspot.addProperty("msPerTick", millisPerTick(session, stats));
+            hotspot.addProperty("calls", stats.calls());
+            hotspot.addProperty("callsPerTick", callsPerTick(session, stats));
+            hotspot.addProperty("sharePercent", reportData.totalProfiledMs() <= 0.0D
+                ? 0.0D : (stats.totalMillis() / reportData.totalProfiledMs()) * 100.0D);
+            hotspots.add(hotspot);
+        }
+        root.add("hotspots", hotspots);
+
+        JsonArray families = new JsonArray();
+        for (FamilySummary family : reportData.familySummaries()) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("family", family.family());
+            entry.addProperty("totalMs", family.totalMillis());
+            entry.addProperty("msPerTick", family.millisPerTick());
+            entry.addProperty("callsPerTick", family.callsPerTick());
+            entry.addProperty("calls", family.calls());
+            families.add(entry);
+        }
+        root.add("families", families);
+
+        JsonObject packages = new JsonObject();
+        packages.addProperty("active", reportData.packageDiagnostics().active());
+        packages.addProperty("averageAgeSeconds", reportData.packageDiagnostics().averageAgeSeconds());
+        packages.addProperty("maxAgeSeconds", reportData.packageDiagnostics().maxAgeSeconds());
+        packages.addProperty("stationaryCandidates", reportData.packageDiagnostics().stationaryCandidates());
+        packages.addProperty("oldPackages", reportData.packageDiagnostics().oldPackages());
+        JsonArray stalled = new JsonArray();
+        for (PackageEntityMonitor.PackageSnapshot snapshot : reportData.packageDiagnostics().stalledPackages()) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("dimension", SignatureUtil.dimensionId(snapshot.dimension()));
+            entry.addProperty("x", snapshot.x());
+            entry.addProperty("y", snapshot.y());
+            entry.addProperty("z", snapshot.z());
+            entry.addProperty("chunkX", snapshot.chunkX());
+            entry.addProperty("chunkZ", snapshot.chunkZ());
+            entry.addProperty("ageSeconds", snapshot.ageSeconds());
+            entry.addProperty("insertionDelay", snapshot.insertionDelay());
+            entry.addProperty("speed", snapshot.speed());
+            stalled.add(entry);
+        }
+        packages.add("stalled", stalled);
+        root.add("packages", packages);
+
+        JsonObject optimization = new JsonObject();
+        OptimizationStats.Snapshot optimizationStats = reportData.optimizationStats();
+        optimization.addProperty("totalEvents", optimizationStats.totalFastRejects());
+        optimization.addProperty("beltFunnelFastRejects", optimizationStats.beltFunnelFastRejects());
+        optimization.addProperty("deployerFullHandFastRejects", optimizationStats.deployerFullHandFastRejects());
+        optimization.addProperty("divingBootsMarkerWritesSkipped", optimizationStats.divingBootsMarkerWritesSkipped());
+        optimization.addProperty("divingBootsMarkerRemovalsSkipped", optimizationStats.divingBootsMarkerRemovalsSkipped());
+        optimization.addProperty("estimatedAvoidedStackCopies", optimizationStats.estimatedAvoidedStackCopies());
+        optimization.addProperty("estimatedAvoidedStackSplits", optimizationStats.estimatedAvoidedStackSplits());
+        optimization.add("spoutCache", cacheJson(optimizationStats.spoutCache()));
+        optimization.add("basinMemo", cacheJson(optimizationStats.basinCache()));
+        optimization.add("crafterMemo", cacheJson(optimizationStats.crafterCache()));
+        root.add("optimization", optimization);
+
+        root.add("alerts", stringArray(reportData.alerts()));
+        root.add("recommendations", stringArray(reportData.debrief().recommendations()));
+        return JSON.toJson(root);
+    }
+
+    private static JsonObject cacheJson(OptimizationStats.CacheSnapshot cache) {
+        JsonObject object = new JsonObject();
+        object.addProperty("lookups", cache.lookups());
+        object.addProperty("hits", cache.hits());
+        object.addProperty("misses", cache.misses());
+        object.addProperty("hitRate", cache.hitRate());
+        object.addProperty("evictions", cache.evictions());
+        object.addProperty("invalidations", cache.invalidations());
+        object.addProperty("negativeResults", cache.negativeResults());
+        object.addProperty("keyBuildNanos", cache.keyBuildNanos());
+        object.addProperty("maxSizeReached", cache.maxSizeReached());
+        return object;
+    }
+
+    private static JsonArray stringArray(List<String> values) {
+        JsonArray array = new JsonArray();
+        values.forEach(array::add);
+        return array;
     }
 
     private static String buildHtmlReport(ReportData reportData) {
@@ -499,9 +655,6 @@ public final class ReportWriter {
             .append("</td><td>")
             .append(reportData.optimizationStats().deployerFullHandFastRejects())
             .append("</td></tr>")
-            .append("<tr><td>Diving Boots no-boots NBT fast path</td><td>")
-            .append(reportData.optimizationStats().divingBootsNoBootFastPaths())
-            .append("</td><td>0</td><td>0</td></tr>")
             .append("<tr><td>Diving Boots redundant marker write skipped</td><td>")
             .append(reportData.optimizationStats().divingBootsMarkerWritesSkipped())
             .append("</td><td>0</td><td>0</td></tr>")
@@ -612,7 +765,7 @@ public final class ReportWriter {
             builder.append("</tbody></table>");
         }
         builder.append("<div class=\"grid\">");
-        appendSmallCard(builder, "Spawned Since Reset", Long.toString(reportData.spawnedPackages()));
+        appendSmallCard(builder, "Spawned During Profile", Long.toString(reportData.spawnedPackages()));
         appendSmallCard(builder, "Requested Duration", session.requestedDurationSeconds() + " s");
         appendSmallCard(builder, "Tick Samples", Long.toString(session.tickSamples()));
         appendSmallCard(builder, "Average Age", formatDecimal(reportData.packageDiagnostics().averageAgeSeconds()) + " s");
@@ -712,6 +865,24 @@ public final class ReportWriter {
         return session.tickSamples() == 0 ? 0.0D : methodStats.totalMillis() / session.tickSamples();
     }
 
+    private static double number(JsonObject object, String key) {
+        return object.has(key) ? object.get(key).getAsDouble() : 0.0D;
+    }
+
+    private static long integer(JsonObject object, String key) {
+        return object.has(key) ? object.get(key).getAsLong() : 0L;
+    }
+
+    private static String topHotspot(JsonObject object) {
+        JsonArray hotspots = object.getAsJsonArray("hotspots");
+        return hotspots == null || hotspots.isEmpty() ? "none" : hotspots.get(0).getAsJsonObject().get("label").getAsString();
+    }
+
+    private static double topHotspotMsPerTick(JsonObject object) {
+        JsonArray hotspots = object.getAsJsonArray("hotspots");
+        return hotspots == null || hotspots.isEmpty() ? 0.0D : hotspots.get(0).getAsJsonObject().get("msPerTick").getAsDouble();
+    }
+
     private static double callsPerTick(CreateProfilerManager.ProfileSession session, CreateProfilerManager.MethodStats methodStats) {
         return session.tickSamples() == 0 ? 0.0D : methodStats.calls() / (double) session.tickSamples();
     }
@@ -736,7 +907,23 @@ public final class ReportWriter {
             .replace("\n", "\\n");
     }
 
-    public record ExportedReport(Path textReport, Path htmlReport) {
+    public record ExportedReport(Path textReport, Path htmlReport, Path jsonReport) {
+    }
+
+    public record ReportComparison(
+        Path newerReport,
+        Path olderReport,
+        double newerAverageMspt,
+        double olderAverageMspt,
+        double newerMaxMspt,
+        double olderMaxMspt,
+        long newerTicksAboveThreshold,
+        long olderTicksAboveThreshold,
+        double newerProfiledCreateMs,
+        double olderProfiledCreateMs,
+        String newerTopHotspot,
+        double newerTopHotspotMsPerTick
+    ) {
     }
 
     private record ReportData(

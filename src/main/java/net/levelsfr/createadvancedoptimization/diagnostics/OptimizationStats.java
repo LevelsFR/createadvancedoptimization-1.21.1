@@ -7,7 +7,6 @@ public final class OptimizationStats {
 
     private static final LongAdder BELT_FUNNEL_FAST_REJECTS = new LongAdder();
     private static final LongAdder DEPLOYER_FULL_HAND_FAST_REJECTS = new LongAdder();
-    private static final LongAdder DIVING_BOOTS_NO_BOOT_FAST_PATHS = new LongAdder();
     private static final LongAdder DIVING_BOOTS_MARKER_WRITES_SKIPPED = new LongAdder();
     private static final LongAdder DIVING_BOOTS_MARKER_REMOVALS_SKIPPED = new LongAdder();
     private static final CacheCounters SPOUT_CACHE = new CacheCounters();
@@ -36,13 +35,6 @@ public final class OptimizationStats {
             return;
         }
         DIVING_BOOTS_MARKER_WRITES_SKIPPED.increment();
-    }
-
-    public static void recordDivingBootsNoBootFastPath() {
-        if (!isEnabled()) {
-            return;
-        }
-        DIVING_BOOTS_NO_BOOT_FAST_PATHS.increment();
     }
 
     public static void recordDivingBootsMarkerRemovalSkipped() {
@@ -209,16 +201,14 @@ public final class OptimizationStats {
     public static Snapshot snapshot() {
         long beltFunnelFastRejects = BELT_FUNNEL_FAST_REJECTS.sum();
         long deployerFullHandFastRejects = DEPLOYER_FULL_HAND_FAST_REJECTS.sum();
-        long divingBootsNoBootFastPaths = DIVING_BOOTS_NO_BOOT_FAST_PATHS.sum();
         long divingBootsMarkerWritesSkipped = DIVING_BOOTS_MARKER_WRITES_SKIPPED.sum();
         long divingBootsMarkerRemovalsSkipped = DIVING_BOOTS_MARKER_REMOVALS_SKIPPED.sum();
         return new Snapshot(
             beltFunnelFastRejects,
             deployerFullHandFastRejects,
-            divingBootsNoBootFastPaths,
             divingBootsMarkerWritesSkipped,
             divingBootsMarkerRemovalsSkipped,
-            beltFunnelFastRejects + deployerFullHandFastRejects + divingBootsNoBootFastPaths + divingBootsMarkerWritesSkipped + divingBootsMarkerRemovalsSkipped,
+            beltFunnelFastRejects + deployerFullHandFastRejects + divingBootsMarkerWritesSkipped + divingBootsMarkerRemovalsSkipped,
             beltFunnelFastRejects + deployerFullHandFastRejects,
             deployerFullHandFastRejects,
             SPOUT_CACHE.snapshot(),
@@ -230,16 +220,14 @@ public final class OptimizationStats {
     public static Snapshot delta(Snapshot start, Snapshot end) {
         long beltFunnelFastRejects = delta(start.beltFunnelFastRejects, end.beltFunnelFastRejects);
         long deployerFullHandFastRejects = delta(start.deployerFullHandFastRejects, end.deployerFullHandFastRejects);
-        long divingBootsNoBootFastPaths = delta(start.divingBootsNoBootFastPaths, end.divingBootsNoBootFastPaths);
         long divingBootsMarkerWritesSkipped = delta(start.divingBootsMarkerWritesSkipped, end.divingBootsMarkerWritesSkipped);
         long divingBootsMarkerRemovalsSkipped = delta(start.divingBootsMarkerRemovalsSkipped, end.divingBootsMarkerRemovalsSkipped);
         return new Snapshot(
             beltFunnelFastRejects,
             deployerFullHandFastRejects,
-            divingBootsNoBootFastPaths,
             divingBootsMarkerWritesSkipped,
             divingBootsMarkerRemovalsSkipped,
-            beltFunnelFastRejects + deployerFullHandFastRejects + divingBootsNoBootFastPaths + divingBootsMarkerWritesSkipped + divingBootsMarkerRemovalsSkipped,
+            beltFunnelFastRejects + deployerFullHandFastRejects + divingBootsMarkerWritesSkipped + divingBootsMarkerRemovalsSkipped,
             beltFunnelFastRejects + deployerFullHandFastRejects,
             deployerFullHandFastRejects,
             delta(start.spoutCache, end.spoutCache),
@@ -251,7 +239,6 @@ public final class OptimizationStats {
     public static void reset() {
         BELT_FUNNEL_FAST_REJECTS.reset();
         DEPLOYER_FULL_HAND_FAST_REJECTS.reset();
-        DIVING_BOOTS_NO_BOOT_FAST_PATHS.reset();
         DIVING_BOOTS_MARKER_WRITES_SKIPPED.reset();
         DIVING_BOOTS_MARKER_REMOVALS_SKIPPED.reset();
         SPOUT_CACHE.reset();
@@ -262,7 +249,6 @@ public final class OptimizationStats {
     public record Snapshot(
         long beltFunnelFastRejects,
         long deployerFullHandFastRejects,
-        long divingBootsNoBootFastPaths,
         long divingBootsMarkerWritesSkipped,
         long divingBootsMarkerRemovalsSkipped,
         long totalFastRejects,
@@ -282,8 +268,6 @@ public final class OptimizationStats {
         long invalidations,
         long negativeResults,
         long keyBuildNanos,
-        long originalLookupNanos,
-        long estimatedAvoidedNanos,
         long maxSizeReached
     ) {
         public double hitRate() {
@@ -300,8 +284,6 @@ public final class OptimizationStats {
             delta(start.invalidations, end.invalidations),
             delta(start.negativeResults, end.negativeResults),
             delta(start.keyBuildNanos, end.keyBuildNanos),
-            delta(start.originalLookupNanos, end.originalLookupNanos),
-            delta(start.estimatedAvoidedNanos, end.estimatedAvoidedNanos),
             end.maxSizeReached
         );
     }
@@ -319,8 +301,6 @@ public final class OptimizationStats {
         private final LongAdder invalidations = new LongAdder();
         private final LongAdder negativeResults = new LongAdder();
         private final LongAdder keyBuildNanos = new LongAdder();
-        private final LongAdder originalLookupNanos = new LongAdder();
-        private final LongAdder estimatedAvoidedNanos = new LongAdder();
         private volatile long maxSizeReached;
 
         private CacheSnapshot snapshot() {
@@ -332,8 +312,6 @@ public final class OptimizationStats {
                 invalidations.sum(),
                 negativeResults.sum(),
                 keyBuildNanos.sum(),
-                originalLookupNanos.sum(),
-                estimatedAvoidedNanos.sum(),
                 maxSizeReached
             );
         }
@@ -346,8 +324,6 @@ public final class OptimizationStats {
             invalidations.reset();
             negativeResults.reset();
             keyBuildNanos.reset();
-            originalLookupNanos.reset();
-            estimatedAvoidedNanos.reset();
             maxSizeReached = 0L;
         }
 

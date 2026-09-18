@@ -16,15 +16,18 @@ Shows:
 
 ## Profiling
 
-- `/createadvancedoptimization profile start <seconds>`
-- `/cao profile start <seconds>`
+- `/createadvancedoptimization profile start [seconds]`
+- `/cao profile start [seconds]`
 
 Starts a lightweight Create-focused profiling session.
+
+When `seconds` is omitted, the configured `diagnostics.profileDefaultDurationSeconds` value is used.
 
 When the requested duration ends, the profiler stops automatically and immediately exports:
 
 - a unique `.txt` debrief
 - a unique local `.html` report
+- a machine-readable `.json` report
 - a styled chat message with quick actions for the exported report
 
 - `/createadvancedoptimization profile stop`
@@ -32,7 +35,7 @@ When the requested duration ends, the profiler stops automatically and immediate
 
 Stops the current profiling session.
 
-Stopping manually also exports a fresh `.txt` and `.html` report pair.
+Stopping manually also exports a fresh `.txt`, `.html`, and `.json` report set.
 
 ## Report
 
@@ -44,12 +47,24 @@ Writes a fresh report export to:
 
 - `logs/createadvancedoptimization/reports/`
 
-Each export creates unique filenames so repeated sessions never overwrite the previous report.
+Each export creates a dedicated subfolder so the files from repeated sessions never mix together.
 
 Each export now writes:
 
 - a `.txt` debrief
 - a richer `.html` report
+- a machine-readable `.json` report
+
+The JSON report contains the session metrics, hotspot methods and families, package diagnostics, optimization counters, alerts, and recommendations.
+
+The report's peak and spawned PackageEntity values are measured for that profiling session; using `/cao reset` before every profile is not required.
+
+- `/createadvancedoptimization report compare`
+- `/cao report compare`
+
+Compares the two most recent JSON reports and displays the MSPT, lag-spike, profiled Create time, and top-hotspot deltas.
+
+The comparison also provides direct buttons for opening the older and newer HTML reports when running on an integrated or local server.
 
 The report includes:
 
@@ -70,13 +85,23 @@ The report includes:
 
 The HTML report is fully local and does not require any website or external upload.
 
-The in-game chat output now uses compact action buttons such as:
+The in-game chat output now uses compact action buttons:
 
 - `Open HTML`
 - `Open TXT`
-- `Copy HTML Path`
+- `Open JSON`
+- `Open Report Folder`
 
-These buttons avoid spamming the full file path in chat. `Open HTML` and `Open TXT` are most useful when the game client can access the exported file on the same machine.
+The buttons use Minecraft's native local-file action. They work when the client can access the same filesystem as the server, such as an integrated or local development server.
+
+On a remote dedicated server, the report files remain on the server machine; vanilla chat cannot directly open a server-side file on a player's computer.
+
+## Unified diagnosis
+
+- `/createadvancedoptimization diagnose`
+- `/cao diagnose`
+
+Combines the latest profiler signal, PackageEntity status, and belt scan into a short administrator summary. It deliberately reports signals and follow-up commands rather than claiming a single proven cause.
 
 ## Package hotspots
 
