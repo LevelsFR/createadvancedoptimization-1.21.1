@@ -101,3 +101,13 @@ Before a release, compile every affected loader and configured version, inspect 
 ## License and attribution
 
 See [LICENSE](../LICENSE), [NOTICE](../NOTICE). Retain upstream notices and third-party asset attribution.
+
+## Reproducing a build on another computer
+
+The current build requires the exact Create `6.0.10` development JAR. Its default lookup points to the maintainer's Windows instance. Pass an absolute path explicitly:
+
+```powershell
+.\gradlew.bat build -Pcreate_dev_jar="C:/path/to/create-1.21.1-6.0.10.jar"
+```
+
+The GitHub build observed on 2026-10-21 failed because this local JAR was unavailable on the Linux runner. Providing the verified dependency is a separate reproducibility gate; the project guide does not claim that the current CI passed.
