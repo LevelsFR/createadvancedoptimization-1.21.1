@@ -91,3 +91,11 @@ V1.4 keeps risky behavior-changing ideas out of active optimization paths unless
 - `docs/configuration.md`
 - `docs/commands.md`
 - `CHANGELOG.md`
+
+## Project guide and verified downloads
+
+[Complete project guide](docs/PROJECT_GUIDE.md) — features, dependency metadata, commands, configuration, source map and build instructions.
+
+- [Source repository](https://github.com/LevelsFR/createadvancedoptimization-1.21.1/tree/master) (public).
+- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/create-advanced-optimization) — published project verified under LevelsFR.
+- [Modrinth](https://modrinth.com/mod/create-advanced-optimization) — approved project in the LevelsFR profile.
