@@ -25,6 +25,7 @@
     "TrainMapSyncMixin",
     "accessor.BeltBlockEntityAccessor",
     "accessor.ChunkMapAccessor",
+    "accessor.EntityPersistentDataAccessor",
     "accessor.GroupedItemsAccessor",
     "accessor.KineticBlockEntityAccessor"
   ],
