@@ -8,7 +8,19 @@
 
 ### Project health
 - Resolve the pinned Create 6.0.10 dependency from Modrinth Maven by default, removing the maintainer-specific Windows JAR path from CI builds.
+- Update GitHub Actions to Node 24-compatible release versions.
 - Align the README's source-code license statement with the repository's MPL-2.0 license and reserved branding notice.
+
+## 1.6.0-fr
+
+### Performances
+- Évite de créer des données persistantes vides pour les entités vivantes qui ne portent pas les bottes de plongée Create et n'ont encore aucune donnée persistante.
+- Continue de supprimer les marqueurs `HeavyBoots` périmés lorsque l'entité possède déjà des données persistantes.
+
+### Maintenance
+- La dépendance Create 6.0.10 est résolue depuis Modrinth Maven, sans chemin de JAR local propre au poste du mainteneur.
+- Mise à jour des actions GitHub vers les versions compatibles avec Node 24.
+- Correction de la présentation de la licence du code source : MPL-2.0; la marque et les éléments graphiques restent réservés.
 
 ## 1.5.0
 
