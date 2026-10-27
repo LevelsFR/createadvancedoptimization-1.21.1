@@ -2,7 +2,7 @@
 
 NeoForge server diagnostics and focused optimizations for Create 6.0.10.
 
-Source and publication snapshot: **2026-10-21**. This guide describes the checked-out source; a download page can contain an earlier release.
+Source and publication snapshot: **2026-10-27**. This guide describes the checked-out source; a download page can contain an earlier release.
 
 ## Status and official links
 
@@ -22,7 +22,7 @@ Source and publication snapshot: **2026-10-21**. This guide describes the checke
 
 | Component | Value |
 | --- | --- |
-| Source version | `1.5` |
+| Source version | `1.6` |
 | Minecraft baseline | `1.21.1` |
 | JDK | `21` |
 | Active branch | `master` |
@@ -104,10 +104,12 @@ See [LICENSE](../LICENSE), [NOTICE](../NOTICE). Retain upstream notices and thir
 
 ## Reproducing a build on another computer
 
-The current build requires the exact Create `6.0.10` development JAR. Its default lookup points to the maintainer's Windows instance. Pass an absolute path explicitly:
+The default build resolves the exact Create `6.0.10` release for Minecraft `1.21.1` from Modrinth Maven using the pinned version ID in `gradle.properties`. GitHub Actions uses the same dependency, so builds do not rely on a developer-specific file path.
+
+For local development with an already downloaded Create JAR, pass its path explicitly:
 
 ```powershell
 .\gradlew.bat build -Pcreate_dev_jar="C:/path/to/create-1.21.1-6.0.10.jar"
 ```
 
-The GitHub build observed on 2026-10-21 failed because this local JAR was unavailable on the Linux runner. Providing the verified dependency is a separate reproducibility gate; the project guide does not claim that the current CI passed.
+When changing the Create target, update `create_version`, `create_version_range`, and `create_modrinth_version` together, then verify both the resolved artifact and the compatibility guard.

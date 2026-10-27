@@ -19,6 +19,13 @@ sourceSets.main.resources {
 }
 
 repositories {
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 base {
@@ -75,16 +82,20 @@ configurations {
 }
 
 dependencies {
-    def createDevJar = providers.gradleProperty("create_dev_jar")
-            .map { file(it) }
-            .orElse(file("C:/Users/salig/curseforge/minecraft/Instances/COBBLEMON REALMS CLASSIC/mods/create-1.21.1-6.0.10.jar"))
-            .get()
-    if (!createDevJar.exists()) {
-        throw new GradleException("Missing required Create development jar: ${createDevJar}. Set -Pcreate_dev_jar=/path/to/create-${create_version}.jar if needed.")
-    }
+    def createDependency = "maven.modrinth:LNytGWDc:${create_modrinth_version}"
+    def createDevJar = providers.gradleProperty("create_dev_jar").map { file(it) }.orNull
 
-    compileOnly files(createDevJar)
-    localRuntime files(createDevJar)
+    if (createDevJar == null) {
+        compileOnly createDependency
+        localRuntime createDependency
+    } else {
+        if (!createDevJar.exists()) {
+            throw new GradleException("Missing Create development jar: ${createDevJar}")
+        }
+
+        compileOnly files(createDevJar)
+        localRuntime files(createDevJar)
+    }
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {

@@ -5,6 +5,7 @@ import net.levelsfr.createadvancedoptimization.config.CAOServerConfig;
 import net.levelsfr.createadvancedoptimization.diagnostics.OptimizationStats;
 import net.levelsfr.createadvancedoptimization.diagnostics.profiler.CreateProfilerManager;
 import net.levelsfr.createadvancedoptimization.diagnostics.profiler.ProfiledSection;
+import net.levelsfr.createadvancedoptimization.mixin.accessor.EntityPersistentDataAccessor;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,6 +18,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(DivingBootsItem.class)
 public abstract class DivingBootsItemMixin {
+
+    @Unique
+    private static final CompoundTag cao$EMPTY_PERSISTENT_DATA = new CompoundTag();
 
     @Unique
     private static long cao$startedAt;
@@ -34,6 +38,16 @@ public abstract class DivingBootsItemMixin {
             CreateProfilerManager.end(ProfiledSection.DIVING_BOOTS, cao$startedAt);
             cao$startedAt = 0L;
         }
+    }
+
+    @Redirect(method = "affects", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/LivingEntity;getPersistentData()Lnet/minecraft/nbt/CompoundTag;", ordinal = 0))
+    private static CompoundTag cao$avoidCreatingEmptyPersistentData(LivingEntity entity) {
+        if (!CAOServerConfig.GENERAL_ENABLED.get() || !CAOServerConfig.DIVING_BOOTS_ENABLED.get()) {
+            return entity.getPersistentData();
+        }
+
+        CompoundTag persistentData = ((EntityPersistentDataAccessor) entity).cao$getPersistentData();
+        return persistentData == null ? cao$EMPTY_PERSISTENT_DATA : persistentData;
     }
 
     @Redirect(method = "affects", at = @At(value = "INVOKE", target = "Lnet/minecraft/nbt/CompoundTag;remove(Ljava/lang/String;)V"))

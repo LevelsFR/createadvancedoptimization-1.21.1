@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.0
+
+### Performance
+- Avoid creating NeoForge persistent-data tags for living entities that do not wear Create Diving Boots and have no existing persistent data.
+- Preserve removal of stale `HeavyBoots` markers from entities that already have persistent data.
+
+### Project health
+- Resolve the pinned Create 6.0.10 dependency from Modrinth Maven by default, removing the maintainer-specific Windows JAR path from CI builds.
+- Align the README's source-code license statement with the repository's MPL-2.0 license and reserved branding notice.
+
 ## 1.5.0
 
 ### New

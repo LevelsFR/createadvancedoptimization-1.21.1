@@ -50,7 +50,7 @@ public final class CAOServerConfig {
         builder.push("optimizations");
 
         builder.push("divingBoots");
-        DIVING_BOOTS_ENABLED = builder.comment("Skips redundant HeavyBoots marker writes/removals when the marker is already in the desired state.")
+        DIVING_BOOTS_ENABLED = builder.comment("Avoids creating empty persistent data for entities without HeavyBoots and skips redundant marker writes/removals.")
             .define("enabled", true);
         builder.pop();
 

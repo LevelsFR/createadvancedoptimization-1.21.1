@@ -26,7 +26,7 @@ It does not optimize:
 - Iris
 - other purely graphical client features
 
-## V1.5 features
+## V1.6 features
 
 - strict Create `6.0.10` compatibility guard
 - server config with per-feature toggles
@@ -35,7 +35,7 @@ It does not optimize:
 - Create diagnostics reports written to `logs/createadvancedoptimization/reports/` as dedicated per-export folders containing `.txt`, `.html`, and machine-readable `.json` reports
 - `/cao report compare` for comparing the two latest JSON reports
 - `PackageEntity` monitoring with per-dimension tracking and chunk hotspots on demand
-- conservative Diving Boots marker-write cleanup without persistent entity-side memoization
+- conservative Diving Boots optimization that avoids empty persistent-data allocation for non-wearers and preserves stale-marker cleanup
 - bounded local spout lookup cache for official Create filling recipe checks, enabled by default
 - one-tick Basin and Mechanical Crafter recipe memoization with dimension-aware keys and nullable Crafter results
 - belt funnel and deployer micro-optimizations for redundant stack-copy hot paths seen in Spark profiles
@@ -70,17 +70,9 @@ It does not optimize:
 
 ## License
 
-This project is `All Rights Reserved`.
+The source code in this repository is licensed under the Mozilla Public License 2.0 (MPL-2.0). You may use, modify, and redistribute the covered source code under its terms. Read `LICENSE` for the full text and distribution requirements.
 
-You may still:
-
-- download and use the mod normally
-- include the compiled jar in modpacks
-- run it on public or private servers
-
-You may not redistribute modified versions or reuse the code, assets, branding, or logo without permission.
-
-See `LICENSE` for the full terms.
+The project name, logo, icons, artwork, and other branding are not licensed under the MPL-2.0. They remain Copyright © 2026 LevelsFR, All Rights Reserved, unless a file states otherwise. See `NOTICE` for attribution details.
 
 ## Experimental caution
 
